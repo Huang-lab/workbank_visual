@@ -28,20 +28,19 @@ merged_df = pd.merge(worker_agg, expert_agg, on="Task")
 merged_df['Priority Score'] = merged_df['Automation Desire Rating'] * merged_df['Automation Capacity Rating']
 merged_df = merged_df.sort_values('Priority Score', ascending=False)
 
-# Create the figure with subplots: Scatter on top, Table below
+# Create the figure with subplots: Scatter on left, Table on right
 fig = make_subplots(
-    rows=2, cols=1,
-    vertical_spacing=0.15,
-    row_heights=[0.7, 0.3],
-    specs=[[{"type": "scatter"}],
-           [{"type": "table"}]]
+    rows=1, cols=2,
+    column_widths=[0.65, 0.35],
+    horizontal_spacing=0.05,
+    specs=[[{"type": "scatter"}, {"type": "table"}]]
 )
 
 # Get unique occupations
 occupations = sorted(merged_df['Occupation (O*NET-SOC Title)'].unique())
 colors = px.colors.qualitative.Alphabet
 
-# Add Scatter traces for each occupation (to allow legend filtering)
+# Add Scatter traces for each occupation
 for i, occ in enumerate(occupations):
     occ_data = merged_df[merged_df['Occupation (O*NET-SOC Title)'] == occ]
     fig.add_trace(
@@ -59,27 +58,27 @@ for i, occ in enumerate(occupations):
         row=1, col=1
     )
 
-# Add a Table trace (initially showing top 15 tasks overall)
-top_tasks = merged_df.head(15)
+# Add a Table trace (initially showing top 20 tasks overall)
+top_tasks = merged_df.head(20)
 fig.add_trace(
     go.Table(
         header=dict(
-            values=["<b>Task</b>", "<b>Occupation</b>", "<b>Desire</b>", "<b>Capability</b>", "<b>Priority</b>"],
-            fill_color='paleturquoise',
+            values=["<b>Task (Top 20)</b>", "<b>Desire</b>", "<b>Cap.</b>", "<b>Score</b>"],
+            fill_color='#2c3e50',
             align='left',
-            font=dict(size=12)
+            font=dict(color='white', size=12)
         ),
         cells=dict(
-            values=[top_tasks['Task'], top_tasks['Occupation (O*NET-SOC Title)'], 
+            values=[top_tasks['Task'], 
                     top_tasks['Automation Desire Rating'].round(2), 
                     top_tasks['Automation Capacity Rating'].round(2),
                     top_tasks['Priority Score'].round(2)],
-            fill_color='lavender',
+            fill_color='#f8f9fa',
             align='left',
-            font=dict(size=11)
+            font=dict(size=10)
         )
     ),
-    row=2, col=1
+    row=1, col=2
 )
 
 # Create Dropdown Buttons
@@ -90,18 +89,23 @@ buttons.append(dict(
     method="update",
     label="All Occupations",
     args=[
-        {"visible": [True] * len(occupations) + [True]}, # All scatter traces + table
-        {"title": "WORKBank: All Occupations (Sorted by Priority)"}
+        {"visible": [True] * len(occupations) + [True]}, 
+        {
+            "title": "WORKBank: All Occupations (Sorted by Priority)",
+            "cells.values": [
+                merged_df.head(20)['Task'], 
+                merged_df.head(20)['Automation Desire Rating'].round(2), 
+                merged_df.head(20)['Automation Capacity Rating'].round(2),
+                merged_df.head(20)['Priority Score'].round(2)
+            ]
+        }
     ]
 ))
 
 # Individual Occupation Buttons
 for occ in occupations:
-    # Visibility list: True for the selected occupation scatter trace, False for others, True for the table
     visible = [o == occ for o in occupations] + [True]
-    
-    # Filter data for the table update
-    occ_top = merged_df[merged_df['Occupation (O*NET-SOC Title)'] == occ].head(15)
+    occ_top = merged_df[merged_df['Occupation (O*NET-SOC Title)'] == occ].head(20)
     
     buttons.append(dict(
         method="update",
@@ -110,10 +114,8 @@ for occ in occupations:
             {"visible": visible},
             {
                 "title": f"WORKBank: {occ}",
-                # Update table data dynamically
                 "cells.values": [
                     occ_top['Task'], 
-                    occ_top['Occupation (O*NET-SOC Title)'], 
                     occ_top['Automation Desire Rating'].round(2), 
                     occ_top['Automation Capacity Rating'].round(2),
                     occ_top['Priority Score'].round(2)
@@ -130,34 +132,36 @@ fig.update_layout(
         showactive=True,
         x=0.0,
         xanchor="left",
-        y=1.15,
+        y=1.1,
         yanchor="top",
         bgcolor="white",
         bordercolor="gray"
     )],
     title=dict(
-        text="<b>WORKBank: Automation Landscape</b><br><sup>Select an occupation to filter and see top tasks</sup>",
-        font=dict(size=20),
+        text="<b>WORKBank: Automation Landscape</b>",
+        font=dict(size=24),
         x=0.5,
-        y=0.95
+        y=0.98
     ),
     xaxis=dict(title="AI Expert-rated Capability", range=[0.8, 5.2]),
     yaxis=dict(title="Worker-related Desire", range=[0.8, 5.2]),
-    height=1000,
-    width=1200,
+    height=800,
+    width=1400,
     template="plotly_white",
     showlegend=True,
     legend=dict(
-        title="Occupations (Click to toggle)",
-        font=dict(size=9),
-        y=0.7,
-        x=1.02
-    )
+        title="Occupations",
+        font=dict(size=8),
+        y=0.5,
+        x=1.1,
+        xanchor="left"
+    ),
+    margin=dict(l=50, r=350, t=100, b=50)
 )
 
-# Add quadrant lines
-fig.add_shape(type="line", x0=3, y0=1, x1=3, y1=5, line=dict(color="gray", dash="dash"), row=1, col=1)
-fig.add_shape(type="line", x0=1, y0=3, x1=5, y1=3, line=dict(color="gray", dash="dash"), row=1, col=1)
+# Add quadrant lines to the scatter plot (row 1, col 1)
+fig.add_shape(type="line", x0=3, y0=1, x1=3, y1=5, line=dict(color="rgba(0,0,0,0.2)", dash="dash"), row=1, col=1)
+fig.add_shape(type="line", x0=1, y0=3, x1=5, y1=3, line=dict(color="rgba(0,0,0,0.2)", dash="dash"), row=1, col=1)
 
 # Save to HTML
 os.makedirs("public", exist_ok=True)
